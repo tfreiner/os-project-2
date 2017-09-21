@@ -1,23 +1,93 @@
 /*
  * Author: Taylor Freiner
- * Date: September 16, 2017
- * Log: Adding help option
+ * Date: September 20, 2017
+ * Log: Adding shared memory management
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include <getopt.h>
+#include <signal.h>
+#include <setjmp.h>
+#include <unistd.h>
+#include <string.h>
+#include <time.h>
+#include <ctype.h>
+#include <signal.h>
+#include <sys/shm.h>
+#include "palin.h"
+
+void clean(){
+	printf("INTERRUPT TRIGGERED\n");
+}
 
 int main(int argc, char* argv[]){
-	int option;
-	if (argc != 1 && argc != 2){
+	int option, size, i;
+	int max_time = 60;
+	char argval;
+	int count = 0;
+	char line[256];
+
+	//SIGNAL HANDLING
+	signal(SIGINT, clean);
+
+	palin();
+	
+	//FILE MANAGEMENT
+	FILE *file = fopen("strings.txt", "r");
+	
+	if (file == NULL){
+		printf("%s: ", argv[0]);
+		perror ("Error: ");
+		return 1;
+	}
+	size = sizeof(file);
+	
+    	while (fgets(line, sizeof(line), file) != NULL)
+    	{
+            count++;
+	}
+	rewind(file);
+	char *mylist[count];
+	for(i = 0; i < count; i++){
+		fgets(line, sizeof(line), file);
+		size_t line_size = strlen(line)-1;
+		if (line[line_size] == '\n')
+    			line[line_size] = '\0';
+		mylist[i] = line;
+		printf(".%s.\n", mylist[i]);
+	}
+	fclose(file);
+
+	/*
+	time_t startTime = time(NULL);
+	do
+	{
+		printf("HEY\n");
+	} while (time(NULL) < startTime + max_time);
+	return 0;
+	sleep(10);	
+         */
+
+	//OPTIONS
+	if (argc != 3){
 		fprintf(stderr, "%s Error: Incorrect number of arguments\n", argv[0]);
 		return 1;
 	}
-	while ((option = getopt(argc, argv, "h")) != -1){
+	while ((option = getopt(argc, argv, "ht:")) != -1){
 		switch (option){
 			case 'h':
-				printf("ADD USAGE STATEMENT %s\n", argv[0]);
+				printf("Usage: %s <-t positive integer>\n", argv[0]);
+				printf("\t-t: max time to run program\n");
           			printf("\t-h: help\n");
 				return 0;
+				break;
+			case 't':
+				argval = *optarg;
+				if(isdigit(argval) && (atoi(optarg) > 0))
+					max_time = atoi(optarg);
+				else{
+					fprintf(stderr, "%s Error: Argument must be a positive integer\n", argv[0]);
+				}
 				break;
 			case '?':
 				fprintf(stderr, "%s Error: ADD USAGE STATEMENT %s\n", argv[0], argv[0]);
@@ -25,33 +95,25 @@ int main(int argc, char* argv[]){
 				break;
 		}
 	}
+
+
+	//SHARED MEMORY
+	int memid = shmget(IPC_PRIVATE, size, IPC_CREAT | 0600);	
+	if(memid == -1){
+		printf("%s: ", argv[0]);
+		perror("Error:");
+		return 1;
+	}
+	shmctl(memid, IPC_RMID, NULL);
 	return 0;
 }
 
-//PETERSON'S SOLUTION
-/*
-extern int flag[2]; // Shared variable; one for each process
-extern int turn; //Shared variable
-void process ( const int me ) { // me can be 0 or 1
-	int other = 1 - me;
-	do{
-	// Entry section
-		flag[me] = 1; // true
-		turn = other   // cede the turn
-		while ( flag[other]  && turn == other);
-		critical_section();
-		flag[me] = 0; // false
-		remainder_section();
-	} while ( 1 );
-}
-*/
-
-//MULTIPLE PROCESS SOLUTION
-/*
-enum state { idle, want_in, in_cs };
-extern int turn;
-extern state flag[n]; //Flag corresponding to each process in shared memory
 process(const int i ) {
+	enum state { idle, want_in, in_cs };
+	int turn;
+	enum state flag[20]; //Flag corresponding to each process in shared memory
+	
+	int j, n;
 	do {
 		do {
 			flag[i] = want_in; // Raise my flag
@@ -68,17 +130,16 @@ process(const int i ) {
 		} while ( ( j < n ) || ( turn != i && flag[turn] != idle ) );
 		// Assign turn to self and enter critical section
 		turn = i;
-		critical_section();
+		//critical_section();
 		// Exit section
 		j = (turn + 1) % n;
 		while (flag[j] == idle)
 			j = (j + 1) % n;
 		// Assign turn to next waiting process; change own flag to idle
 		turn = j; flag[i] = idle;
-		remainder_section();
+		//remainder_section();
 	} while ( 1 );
 }
-*/
 
 //SIGNAL HANDLERS
 /*
