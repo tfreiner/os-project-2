@@ -1,7 +1,7 @@
-/*
+/**
  * Author: Taylor Freiner
  * Date: September 23, 2017
- * Log: More shared memory management
+ * Log: Fixed shared mem and while loop
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,15 +22,15 @@ int sharedmem[100];
 int processids[100];
 
 void clean(){
-	//printf("INTERRUPT TRIGGERED\n");
+	printf("Interrupt Triggered\n");
 	int i;
-	printf("MEM COUNT: %d\n", memcount);
+	printf("Mem Count: %d\n", memcount);
 	for(i = -1; i < memcount; i++){
-		printf("EXIT ID: %d\n", sharedmem[memcount]);
+		printf("Exit Id: %d\n", sharedmem[memcount]);
 		shmctl(sharedmem[memcount], IPC_RMID, NULL);
 	}
 	for(i = -1; i < processcount; i++){
-		printf("KILLING PROCESS: %d\n", processids[processcount]);
+		printf("Killing Process: %d\n", processids[processcount]);
 		kill(processids[processcount], SIGKILL);		
 	}
 }
@@ -62,7 +62,6 @@ int main(int argc, char* argv[]){
 	}
 	rewind(file);
 	char mylist[count][256];
-	//char b[count][256];
 	for(i = 0; i < count; i++){
 		fgets(line, sizeof(line), file);
 		size_t line_size = strlen(line)-1;
@@ -103,9 +102,9 @@ int main(int argc, char* argv[]){
 	}
 	
 	//SHARED MEMORY
-	key_t key = ftok("dummyfile", 1);
-	int memid = shmget(key, 8*256, IPC_CREAT | 0644);
-	printf("INITIAL ID: .%d.\n", memid);
+	key_t key = ftok("keygen", 1);
+	int memid = shmget(key, count*256, IPC_CREAT | 0644);
+	printf("Initial ID: %d\n", memid);
 	memcount++;
 	sharedmem[memcount] = memid;
 	if(memid == -1){
@@ -113,64 +112,51 @@ int main(int argc, char* argv[]){
 		perror("Error:");
 		return 1;
 	}
-	char (*mempoint)[count][256] = shmat (memid, NULL, 0);
+	char (*mempoint)[count] = shmat (memid, NULL, 0);
 	if(mempoint == (char *)-1)
 		printf("ERROR\n");
 	for(i = 0; i < count; i++){
 		memcpy(mempoint[i], mylist[i], 256);
+		printf(".%s. ", mempoint[i]);
 	}
-	printf("%s\n", mempoint[0][0]);
-	printf("%s\n", mempoint[1][0]);
+	printf("\n");
+
 	//PROCESSES
-	for(i = 0; i < 1; i++){
-		if((childpid = fork())){
+	int processcount = 0;
+	i = 0;
+	while(i != count){
+		printf("PROCESS COUNT: %d\n", processcount);
+		if(processcount < 19){
+			childpid = fork();
 			processcount++;
-			processids[processcount] = childpid;
-			execl("palin", "palin", NULL);
-			break;
+			
+			if(childpid > 0){
+				printf("Parent Process\n");
+				printf("%d\n", childpid);
+				processids[processcount] = childpid;
+			}
+			else if(childpid == 0){
+				printf("Child Process\n");
+				char arg[12], arg2[12];
+				sprintf(arg, "%d", i);
+				sprintf(arg2, "%d", count);
+				execl("palin", "palin", arg, arg2, NULL);
+				break;
+			}
+			else if(childpid == -1){
+				printf("%s: ", argv[0]);
+				perror("Error:");
+			}
 		}
-		if(childpid == -1){
-			printf("%s: ", argv[0]);
-			perror("Error:");
+		else if(wait(NULL)){
+			processcount--;
+			printf("DECREMENT COUNTER\n");
 		}
+		i++;
 	}
-	wait(NULL);
-
-	//shmctl(memid, IPC_RMID, NULL);
-	sleep(100);
-	return 0;
-}
-
-void process(const int i ) {
-	enum state { idle, want_in, in_cs };
-	int turn;
-	enum state flag[20]; //Flag corresponding to each process in shared memory
 	
-	int j;
-	int n = 20;
-	do {
-		do {
-			flag[i] = want_in; // Raise my flag
-			j = turn; // Set local variable
-			// wait until its my turn
-			while ( j != i )
-				j = ( flag[j] != idle ) ? turn : ( j + 1 ) % n;
-			// Declare intention to enter critical section
-			flag[i] = in_cs;
-			// Check that no one else is in critical section
-			for ( j = 0; j < n; j++ )
-				if ( ( j != i ) && ( flag[j] == in_cs ) )
-					break;
-		} while ( ( j < n ) || ( turn != i && flag[turn] != idle ) );
-		// Assign turn to self and enter critical section
-		turn = i;
-		//critical_section();
-		// Exit section
-		j = (turn + 1) % n;
-		while (flag[j] == idle)
-			j = (j + 1) % n;
-		// Assign turn to next waiting process; change own flag to idle
-		turn = j; flag[i] = idle;
-		//remainder_section();
-	} while ( 1 );
+	printf("Out of loop\n");
+	sleep(20);
+	shmctl(memid, IPC_RMID, NULL);
+	return 0;
 }
