@@ -1,7 +1,7 @@
 /*
  * Author: Taylor Freiner
- * Date: September 20, 2017
- * Log: Adding shared memory management
+ * Date: September 23, 2017
+ * Log: More shared memory management
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,11 +13,26 @@
 #include <time.h>
 #include <ctype.h>
 #include <signal.h>
+#include <sys/wait.h>
 #include <sys/shm.h>
-#include "palin.h"
+
+int memcount = -1;
+int processcount = -1;
+int sharedmem[100];
+int processids[100];
 
 void clean(){
-	printf("INTERRUPT TRIGGERED\n");
+	//printf("INTERRUPT TRIGGERED\n");
+	int i;
+	printf("MEM COUNT: %d\n", memcount);
+	for(i = -1; i < memcount; i++){
+		printf("EXIT ID: %d\n", sharedmem[memcount]);
+		shmctl(sharedmem[memcount], IPC_RMID, NULL);
+	}
+	for(i = -1; i < processcount; i++){
+		printf("KILLING PROCESS: %d\n", processids[processcount]);
+		kill(processids[processcount], SIGKILL);		
+	}
 }
 
 int main(int argc, char* argv[]){
@@ -26,12 +41,11 @@ int main(int argc, char* argv[]){
 	char argval;
 	int count = 0;
 	char line[256];
+	pid_t childpid = 0;
 
 	//SIGNAL HANDLING
 	signal(SIGINT, clean);
 
-	palin();
-	
 	//FILE MANAGEMENT
 	FILE *file = fopen("strings.txt", "r");
 	
@@ -47,27 +61,17 @@ int main(int argc, char* argv[]){
             count++;
 	}
 	rewind(file);
-	char *mylist[count];
+	char mylist[count][256];
+	//char b[count][256];
 	for(i = 0; i < count; i++){
 		fgets(line, sizeof(line), file);
 		size_t line_size = strlen(line)-1;
 		if (line[line_size] == '\n')
     			line[line_size] = '\0';
-		mylist[i] = line;
-		printf(".%s.\n", mylist[i]);
+		strcpy(mylist[i], line);
 	}
 	fclose(file);
-
-	/*
-	time_t startTime = time(NULL);
-	do
-	{
-		printf("HEY\n");
-	} while (time(NULL) < startTime + max_time);
-	return 0;
-	sleep(10);	
-         */
-
+	
 	//OPTIONS
 	if (argc != 3){
 		fprintf(stderr, "%s Error: Incorrect number of arguments\n", argv[0]);
@@ -83,8 +87,10 @@ int main(int argc, char* argv[]){
 				break;
 			case 't':
 				argval = *optarg;
-				if(isdigit(argval) && (atoi(optarg) > 0))
+				if(isdigit(argval) && (atoi(optarg) > 0)){
 					max_time = atoi(optarg);
+					printf("Max Time: %d\n", max_time);
+				}
 				else{
 					fprintf(stderr, "%s Error: Argument must be a positive integer\n", argv[0]);
 				}
@@ -95,25 +101,53 @@ int main(int argc, char* argv[]){
 				break;
 		}
 	}
-
-
+	
 	//SHARED MEMORY
-	int memid = shmget(IPC_PRIVATE, size, IPC_CREAT | 0600);	
+	key_t key = ftok("dummyfile", 1);
+	int memid = shmget(key, 8*256, IPC_CREAT | 0644);
+	printf("INITIAL ID: .%d.\n", memid);
+	memcount++;
+	sharedmem[memcount] = memid;
 	if(memid == -1){
 		printf("%s: ", argv[0]);
 		perror("Error:");
 		return 1;
 	}
-	shmctl(memid, IPC_RMID, NULL);
+	char (*mempoint)[count][256] = shmat (memid, NULL, 0);
+	if(mempoint == (char *)-1)
+		printf("ERROR\n");
+	for(i = 0; i < count; i++){
+		memcpy(mempoint[i], mylist[i], 256);
+	}
+	printf("%s\n", mempoint[0][0]);
+	printf("%s\n", mempoint[1][0]);
+	//PROCESSES
+	for(i = 0; i < 1; i++){
+		if((childpid = fork())){
+			processcount++;
+			processids[processcount] = childpid;
+			execl("palin", "palin", NULL);
+			break;
+		}
+		if(childpid == -1){
+			printf("%s: ", argv[0]);
+			perror("Error:");
+		}
+	}
+	wait(NULL);
+
+	//shmctl(memid, IPC_RMID, NULL);
+	sleep(100);
 	return 0;
 }
 
-process(const int i ) {
+void process(const int i ) {
 	enum state { idle, want_in, in_cs };
 	int turn;
 	enum state flag[20]; //Flag corresponding to each process in shared memory
 	
-	int j, n;
+	int j;
+	int n = 20;
 	do {
 		do {
 			flag[i] = want_in; // Raise my flag
@@ -140,42 +174,3 @@ process(const int i ) {
 		//remainder_section();
 	} while ( 1 );
 }
-
-//SIGNAL HANDLERS
-/*
-void myhandler(int signo) {
-	int esaved;
-	esaved = errno;
-	write(STDOUT_FILENO, "Got a signal\n", 13);
-	errno = esaved;
-}
-
-#include <setjmp.h>
-#include <signal.h>
-#include <stdio.h>
-#include <unistd.h>
-static sigjmp_buf jmpbuf;
-static volatile sig_atomic_t jumpok = 0;
-// ARGSUSED
-static void chandler(int signo) {
-	if (jumpok == 0) return;
-	siglongjmp(jmpbuf, 1);
-}
-int main(void)  {
-	struct sigaction act;
-	act.sa_flags = 0;
-	act.sa_handler = chandler;
-	if ((sigemptyset(&act.sa_mask) == -1) ||
-		(sigaction(SIGINT, &act, NULL) == -1)) {
-		perror("Failed to set up SIGINT handler");
-		return 1;
-	}
-	// stuff goes here
-	fprintf(stderr, "This is process %ld\n", (long)getpid());
-	if (sigsetjmp(jmpbuf, 1))
-		fprintf(stderr, "Returned to main loop due to ^c\n");
-	jumpok = 1;
-	for ( ; ; )
-		// main loop goes here
-}
-*/

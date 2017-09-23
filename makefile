@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-Wall
-TARGET=project2
+TARGET=master palin
 
 all: $(TARGET) 
 
