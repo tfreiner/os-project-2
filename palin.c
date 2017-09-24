@@ -1,7 +1,7 @@
 /**
  * Author: Taylor Freiner
  * Date: September 23, 2017
- * Log: Retrieving data from shared mem
+ * Log: Starting critical section
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,15 +20,9 @@ int main(int argc, char* argv[]){
 	printf("%s\n", argv[2]);
 	j = atoi(argv[1]);
 	count = atoi(argv[2]);
-	//key_t key = ftok("dummyfile", 1);
-	//printf("%s\n", argv[1]);
-	//int memid = shmget(key, 8*256, 0);
-	//printf("Mem Id: %d\n", memid);
-	//char (*mempoint)[count][256] = shmat (memid, (void *)0, 0);
-	//printf("String: %s\n", mempoint[1][0]);
 
-	//process(j, count);
-	palin(count, j);
+	process(j, count);
+//	palin(count, j);
 /*	
 	for(i = 0; i < 5; i++){
 		srand(time(NULL));
@@ -42,39 +36,49 @@ int main(int argc, char* argv[]){
 	fprintf(palin_file, "here");
 	fclose(palin_file);
 */
+	sleep(10);
+	
 	return 0;
 }
 
 void process(const int i, int count){
-	enum state {idle, want_in, in_cs};
-	int turn;
+	key_t key2 = ftok("keygen2", 1);
+	key_t key3 = ftok("keygen3", 1);
+	int memid2 = shmget(key2, sizeof(int*), 0);
+	int memid3 = shmget(key3, sizeof(int*)*20, 0);
+	int *flag = (int *)shmat (memid3, NULL, 0);
+	int *turn = (int *)shmat (memid2, NULL, 0);
+	//enum state {idle, want_in, in_cs};
 	int n = 20;
-	enum state flag[n]; //Flag corresponding to each process in shared memory
+	//enum state flag[n]; //Flag corresponding to each process in shared memory
 
 	int j;
+	int idle = 0;
+	int want_in = 1;
+	int in_cs = 2;
 	do {
 		do {
-			flag[i] = want_in; // Raise my flag
-			j = turn; // Set local variable
+			memcpy(&flag[i], &want_in, 4); // Raise my flag
+			j = *turn; // Set local variable
 			// wait until its my turn
 			while ( j != i )
-				j = ( flag[j] != idle ) ? turn : ( j + 1 ) % n;
+				j = ( flag[j] != idle ) ? *turn : ( j + 1 ) % n;
 			// Declare intention to enter critical section
-			flag[i] = in_cs;
+			memcpy(&flag[i], &in_cs, 4);
 			// Check that no one else is in critical section
 			for ( j = 0; j < n; j++ )
-				if ( ( j != i ) && ( flag[j] == in_cs ) )
+				if ( ( j != i ) && ( flag[j] == 2 ) )
 					break;
-		} while ( ( j < n ) || ( turn != i && flag[turn] != idle ) );
+		} while ( ( j < n ) || ( *turn != i && flag[*turn] != 0) );
 		// Assign turn to self and enter critical section
-		turn = i;
+		*turn = i;
 		palin(count, i);
 		// Exit section
-		j = (turn + 1) % n;
-		while (flag[j] == idle)
+		j = (*turn + 1) % n;
+		while (flag[j] == 0)
 			j = (j + 1) % n;
 		// Assign turn to next waiting process; change own flag to idle
-		turn = j; flag[i] = idle;
+		*turn = j; memcpy(&flag[i], &idle, 4);
 		//remainder_section();
 	} while ( 1 );
 }
@@ -88,8 +92,17 @@ void palin(int count, int index){
 	FILE *non_palin_file = fopen("nopalin.out", "a");
 	printf("COUNT: %d\n", count);
 	key_t key = ftok("keygen", 1);
+	//key_t key2 = ftok("keygen2", 1);
+	//key_t key3 = ftok("keygen3", 1);
 	int memid = shmget(key, count*256, 0);
-	char (*mystring)[count] = shmat (memid, NULL, 0);
+	//int memid2 = shmget(key2, sizeof(int*), 0);
+	//int memid3 = shmget(key3, sizeof(int*)*20, 0);
+	char (*mystring)[256] = shmat (memid, NULL, 0);
+	//int *turn = (int *)shmat (memid2, NULL, 0);
+	//int *flag = (int *)shmat (memid3, NULL, 0);
+	//for(i = 0; i < 20; i++)
+	//	printf("FLAG[%d]: %d ", i, flag[i]);
+	//printf("TURN: %d", *turn);
 	for(i = 0; i < count; i++)
 		printf(".%s. ", mystring[i]);
 	printf("\n");
@@ -101,7 +114,7 @@ void palin(int count, int index){
 	while (i < j){
 		if (string[i] != string[j]){
 			printf("%s is not a palindrome\n", string);
-			fprintf(non_palin_file, charindex);
+			fprintf(non_palin_file, string);
 			fprintf(non_palin_file, "\n");
 			fclose(non_palin_file);
 			return;
@@ -110,9 +123,8 @@ void palin(int count, int index){
 		j--;
 	}
 	printf("%s is a palindrome\n", string);
-	fprintf(palin_file, charindex);
+	fprintf(palin_file, string);
 	fprintf(palin_file, "\n");
 	fclose(palin_file);
 	return;
-
 }

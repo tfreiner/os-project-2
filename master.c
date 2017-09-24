@@ -1,7 +1,7 @@
 /**
  * Author: Taylor Freiner
  * Date: September 23, 2017
- * Log: Fixed shared mem and while loop
+ * Log: Starting critical section 
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,7 +25,7 @@ void clean(){
 	printf("Interrupt Triggered\n");
 	int i;
 	printf("Mem Count: %d\n", memcount);
-	for(i = -1; i < memcount; i++){
+	for(i = 0; i < 3; i++){
 		printf("Exit Id: %d\n", sharedmem[memcount]);
 		shmctl(sharedmem[memcount], IPC_RMID, NULL);
 	}
@@ -103,22 +103,38 @@ int main(int argc, char* argv[]){
 	
 	//SHARED MEMORY
 	key_t key = ftok("keygen", 1);
+	key_t key2 = ftok("keygen2", 1);
+	key_t key3 = ftok("keygen3", 1);
 	int memid = shmget(key, count*256, IPC_CREAT | 0644);
+	int memid2 = shmget(key2, sizeof(int*), IPC_CREAT | 0644);
+	int memid3 = shmget(key3, sizeof(int*)*20, IPC_CREAT | 0644);
 	printf("Initial ID: %d\n", memid);
-	memcount++;
-	sharedmem[memcount] = memid;
+	sharedmem[0] = memid;
+	sharedmem[1] = memid2;
+	sharedmem[2] = memid3;
 	if(memid == -1){
 		printf("%s: ", argv[0]);
 		perror("Error:");
 		return 1;
 	}
-	char (*mempoint)[count] = shmat (memid, NULL, 0);
+	char (*mempoint)[256] = shmat (memid, NULL, 0);
+	int *mempoint2 = (int *)shmat (memid2, NULL, 0);
+	int *mempoint3 = (int *)shmat (memid3, NULL, 0);
 	if(mempoint == (char *)-1)
+		printf("ERROR\n");
+	if(mempoint2 == (int *)-1)
+		printf("ERROR\n");
+	if(mempoint3 == (int *)-1)
 		printf("ERROR\n");
 	for(i = 0; i < count; i++){
 		memcpy(mempoint[i], mylist[i], 256);
 		printf(".%s. ", mempoint[i]);
 	}
+	for(i = 0; i < 20; i++)
+		memcpy(&mempoint3[i], &i, 4);
+	int turnint = 0;
+	memcpy(mempoint2, &turnint, sizeof(int*));
+	//emcpy(mempoint2, 0, 8);
 	printf("\n");
 
 	//PROCESSES
@@ -158,5 +174,7 @@ int main(int argc, char* argv[]){
 	printf("Out of loop\n");
 	sleep(20);
 	shmctl(memid, IPC_RMID, NULL);
+	shmctl(memid2, IPC_RMID, NULL);
+	shmctl(memid3, IPC_RMID, NULL);
 	return 0;
 }
