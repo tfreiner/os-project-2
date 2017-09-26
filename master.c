@@ -1,7 +1,7 @@
 /**
  * Author: Taylor Freiner
- * Date: September 23, 2017
- * Log: Starting critical section 
+ * Date: September 25, 2017
+ * Log: More work on critical section 
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,7 +23,7 @@ int processids[100];
 
 void clean(){
 	printf("Interrupt Triggered\n");
-	int i;
+	int i;	
 	printf("Mem Count: %d\n", memcount);
 	for(i = 0; i < 3; i++){
 		printf("Exit Id: %d\n", sharedmem[memcount]);
@@ -45,6 +45,7 @@ int main(int argc, char* argv[]){
 
 	//SIGNAL HANDLING
 	signal(SIGINT, clean);
+	signal(SIGALRM, clean);
 
 	//FILE MANAGEMENT
 	FILE *file = fopen("strings.txt", "r");
@@ -89,6 +90,7 @@ int main(int argc, char* argv[]){
 				if(isdigit(argval) && (atoi(optarg) > 0)){
 					max_time = atoi(optarg);
 					printf("Max Time: %d\n", max_time);
+					alarm(max_time);
 				}
 				else{
 					fprintf(stderr, "%s Error: Argument must be a positive integer\n", argv[0]);

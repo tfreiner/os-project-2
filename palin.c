@@ -15,7 +15,7 @@ void process(const int, int, int);
 void palin(int, int, int);
 
 int main(int argc, char* argv[]){	
-	printf("---------------------------------------IN MAIN PALIN FILE--------------------------------------------\n");
+	printf("----------------------IN MAIN PALIN FILE-------------------------------\n");
 	int i, processIndex, stringCount, stringIndex;
 	processIndex = atoi(argv[1]);
 	printf("PROCESS INDEX: %d\n", processIndex);
@@ -27,9 +27,9 @@ int main(int argc, char* argv[]){
 //	palin(stringCount, stringIndex);
 //	process(processIndex, stringIndex, stringCount);
 
-
+/*
 	for(i = 0; i < stringIndex; i++){
-		printf("-------------------------------------FOR LOOP\n%d", processIndex);
+		printf("-----------------------FOR LOOP-------------------------\n%d", processIndex);
 		srand(time(NULL));
 		float time1 = (float)rand()/(float)(RAND_MAX/2);
 		float time2 = (float)rand()/(float)(RAND_MAX/2);
@@ -39,12 +39,13 @@ int main(int argc, char* argv[]){
 		printf("LEAVING CRITICAL SECTION\n");
 		sleep(time2);
 	}
-
+*/
+	process(processIndex, stringIndex, stringCount);
 	return 0;
 }
 
 void process(const int i, int stringindex, int count){
-	printf("---------------------------------------------------------IN PROCESS\n");
+	printf("------------------IN PROCESS-------------------------\n");
 	printf("\n\n\nPROCESS INDEX: %d\n\n\n", i);
 	printf("\n\n\nSTRING INDEX: %d\n\n\n", stringindex);	
 	key_t key2 = ftok("keygen2", 1);
@@ -79,7 +80,17 @@ void process(const int i, int stringindex, int count){
 		} while ( ( j < n ) || ( *turn != i && flag[*turn] != 0) );
 		// Assign turn to self and enter critical section
 		*turn = i;
-		palin(count, i, stringindex);
+		for(k = 0; k < stringindex; k++){
+			printf("-----------------------FOR LOOP-------------------------\n%d", i);
+			srand(time(NULL));
+			float time1 = (float)rand()/(float)(RAND_MAX/2);
+			float time2 = (float)rand()/(float)(RAND_MAX/2);
+			sleep(time1);
+			//palin(count, processIndex, (processIndex*5) + i);
+			palin(count, i, (i*5)+k);
+			sleep(time2);
+		}
+		//palin(count, i, stringindex);
 		exit = 1;
 		j = (*turn + 1) % n;
 		while (flag[j] == 0)
@@ -91,14 +102,14 @@ void process(const int i, int stringindex, int count){
 }
 
 void palin(int count, int processIndex, int stringIndex){
-	printf("IN PALIN\n");
+	printf("------------------IN PALIN---------------------------\n");
 	int i = 0;
 	int j = 0;
 	//printf("COUNT: %d\n\n", count);
 	//printf("INDEX: %d\n\n", processIndex);
 	//printf("STRING INDEX: %d\n\n", stringIndex);
-	char charindex[12];
-	sprintf(charindex, "%d", index);	
+//	char charindex[12];
+//	sprintf(charindex, "%d", index);	
 	FILE *palin_file = fopen("palin.out", "a");
 	FILE *non_palin_file = fopen("nopalin.out", "a");
 	key_t key = ftok("keygen", 1);
