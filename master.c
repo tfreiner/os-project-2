@@ -165,8 +165,8 @@ int main(int argc, char* argv[]){
 		count -= 5;
 		i++;
 	}
-	
-	sleep(40);
+
+	sleep(40);	
 	shmctl(memid, IPC_RMID, NULL);
 	shmctl(memid2, IPC_RMID, NULL);
 	shmctl(memid3, IPC_RMID, NULL);

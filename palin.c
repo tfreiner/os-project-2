@@ -27,6 +27,9 @@ int main(int argc, char* argv[]){
 }
 
 void process(const int i, int stringIndex, int stringCount){
+	fprintf(stderr, "Process %d entering multiple process algorithm.\n\n", i);
+	time_t currentTime;
+	char* currentTimeString;
 	key_t key2 = ftok("keygen2", 1);
 	key_t key3 = ftok("keygen3", 1);
 	int memid2 = shmget(key2, sizeof(int*), 0);
@@ -60,7 +63,13 @@ void process(const int i, int stringIndex, int stringCount){
 			float time1 = (float)rand()/(float)(RAND_MAX/2);
 			float time2 = (float)rand()/(float)(RAND_MAX/2);
 			sleep(time1);
+			currentTime = time(NULL);
+			currentTimeString = ctime(&currentTime);
+			fprintf(stderr, "Process %d entering critical section.  Time: %s\n", i, currentTimeString);
 			palin(stringCount, i, (i*5)+k);
+			currentTime = time(NULL);
+			currentTimeString = ctime(&currentTime);
+			fprintf(stderr, "Process %d exiting critical section.  Time: %s\n", i, currentTimeString);
 			sleep(time2);
 		}
 		exit = 1;
@@ -80,8 +89,6 @@ void palin(int stringCount, int processIndex, int stringIndex){
 	key_t key = ftok("keygen", 1);
 	int memid = shmget(key, stringCount*256, 0);
 	char (*mystring)[256] = shmat (memid, NULL, 0);
-	for(i = 0; i < stringCount; i++)
-		printf(".%s. ", mystring[i]);
 	char* string = mystring[stringIndex];
 	j = strlen(string) - 1;
 	i = 0;
