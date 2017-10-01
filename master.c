@@ -1,7 +1,7 @@
 /**
  * Author: Taylor Freiner
  * Date: October 1, 2017
- * Log: Working on more than 19 processes
+ * Log: Finished.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -103,7 +103,6 @@ int main(int argc, char* argv[]){
 	fclose(file);
 	
 	//SHARED MEMORY
-	
 	pid_t index[19];
 	for(i = 0; i < 19; i++)
 		index[i] = -1;
@@ -133,8 +132,9 @@ int main(int argc, char* argv[]){
 	for(i = 0; i < count; i++){
 		memcpy(mempoint[i], mylist[i], 256);
 	}
-	for(i = 0; i < 20; i++)
-		memcpy(&mempoint3[i], &i, 4);
+	int flag = -1;
+	for(i = 0; i < 19; i++)
+		memcpy(&mempoint3[i], &flag, 4);
 	int turnint = 0;
 	memcpy(mempoint2, &turnint, sizeof(int*));
 
@@ -177,6 +177,7 @@ int main(int argc, char* argv[]){
 				printf("%s: ", argv[0]);
 				perror("Error:");
 			}
+			count -= 5;
 		}
 		else{
 			processid = (wait(NULL));
@@ -185,10 +186,10 @@ int main(int argc, char* argv[]){
 				if(index[j] == processid){
 					index[j] = -1;
 					j = 20;
+					kill(processid, SIGKILL);
 				}
 			}
 		}
-		count -= 5;
 	}
 	sleep(10);
 	shmctl(memid, IPC_RMID, NULL);
