@@ -1,7 +1,7 @@
 /**
  * Author: Taylor Freiner
- * Date: September 25, 2017
- * Log: Code cleanup 
+ * Date: October 1, 2017
+ * Log: Working on more than 19 processes
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,13 +39,43 @@ int main(int argc, char* argv[]){
 	int option, size, i;
 	int max_time = 60;
 	char argval;
+	char filename[1][100];
 	int count = 0;
 	char line[256];
 	pid_t childpid = 0;
+
 	//SIGNAL HANDLING
 	signal(SIGINT, clean);
 	signal(SIGALRM, clean);
 
+	if (argc != 3){
+		fprintf(stderr, "%s Error: Incorrect number of arguments\n", argv[0]);
+		return 1;
+	}
+	while ((option = getopt(argc, argv, "ht:")) != -1){
+		switch (option){
+			case 'h':
+				printf("Usage: %s <-t positive integer>\n", argv[0]);
+				printf("\t-t: max time to run program\n");
+				printf("\t-h: help\n");
+				return 0;
+				break;
+			case 't':
+				argval = *optarg;
+				if(isdigit(argval) && (atoi(optarg) > 0)){
+					max_time = atoi(optarg);
+					alarm(max_time);
+				} else {
+					fprintf(stderr, "%s Error: Argument must be a positive integer\n", argv[0]);			
+				}
+				break;
+			case '?':
+				fprintf(stderr, "%s Error: Usage: %s <-t positive integer>\n", argv[0], argv[0]);
+				return 1;
+				break;
+		}
+	}
+			
 	//FILE MANAGEMENT
 	FILE *file = fopen("strings.txt", "r");
 	
@@ -72,36 +102,11 @@ int main(int argc, char* argv[]){
 	}
 	fclose(file);
 	
-	//OPTIONS
-	if (argc != 3){
-		fprintf(stderr, "%s Error: Incorrect number of arguments\n", argv[0]);
-		return 1;
-	}
-	while ((option = getopt(argc, argv, "ht:")) != -1){
-		switch (option){
-			case 'h':
-				printf("Usage: %s <-t positive integer>\n", argv[0]);
-				printf("\t-t: max time to run program\n");
-          			printf("\t-h: help\n");
-				return 0;
-				break;
-			case 't':
-				argval = *optarg;
-				if(isdigit(argval) && (atoi(optarg) > 0)){
-					max_time = atoi(optarg);
-					alarm(max_time);
-				}
-				else{
-					fprintf(stderr, "%s Error: Argument must be a positive integer\n", argv[0]);
-				}
-				break;
-			case '?':
-				fprintf(stderr, "%s Error: Usage: %s <-t positive integer>\n", argv[0], argv[0]);
-				return 1;
-				break;
-		}
-	}
 	//SHARED MEMORY
+	
+	pid_t index[19];
+	for(i = 0; i < 19; i++)
+		index[i] = -1;
 	key_t key = ftok("keygen", 1);
 	key_t key2 = ftok("keygen2", 1);
 	key_t key3 = ftok("keygen3", 1);
@@ -137,36 +142,55 @@ int main(int argc, char* argv[]){
 	int processcount = 0;
 	int stringindex = 0;
 	int stringCount = count;
+	int j;
+	int k = -1;
+	pid_t processid;
 	i = 0;
 	while(count > 0){
 		if(processcount < 19){
 			if(count < 5)
 				stringindex = count % 5;
-			childpid = fork();
-			processcount++;
+			for(j = 0; j < 19; j++){
+				if(index[j] == -1){
+					processcount++;
+					childpid = fork();
+					if(childpid){
+						index[j] = childpid;
+						i = j;
+					}
+					k++;
+					j = 20;
+				}
+			}
 			if(childpid > 0){
 				processids[processcount] = childpid;
 			}
 			else if(childpid == 0){
-				char arg[12], arg2[12], arg3[12];
+				char arg[12], arg2[12], arg3[12], arg4[12];
 				sprintf(arg, "%d", i);
 				sprintf(arg2, "%d", stringCount);
 				sprintf(arg3, "%d", stringindex);
-				execl("palin", "palin", arg, arg2, arg3, NULL);
+				sprintf(arg4, "%d", k);
+				execl("palin", "palin", arg, arg2, arg3, arg4, NULL);
 			}
-			else if(childpid == -1){
+			if(childpid == -1){
 				printf("%s: ", argv[0]);
 				perror("Error:");
 			}
 		}
-		else if(wait(NULL)){
+		else{
+			processid = (wait(NULL));
 			processcount--;
+			for(j = 0; j < 19; j++){
+				if(index[j] == processid){
+					index[j] = -1;
+					j = 20;
+				}
+			}
 		}
 		count -= 5;
-		i++;
 	}
-
-	sleep(40);	
+	sleep(10);
 	shmctl(memid, IPC_RMID, NULL);
 	shmctl(memid2, IPC_RMID, NULL);
 	shmctl(memid3, IPC_RMID, NULL);

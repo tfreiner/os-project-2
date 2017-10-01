@@ -1,7 +1,7 @@
 /**
  * Author: Taylor Freiner
- * Date: September 25, 2017
- * Log: Code cleanup
+ * Date: October 1, 2017
+ * Log: Working on more than 19 processes
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,23 +11,24 @@
 #include <errno.h>
 #include <string.h>
 
-void process(const int, int, int);
+void process(const int, int, int, int);
 void palin(int, int, int);
 
 int main(int argc, char* argv[]){	
-	int processIndex, stringCount, stringIndex;
+	int processIndex, stringCount, stringIndex, k;
 	processIndex = atoi(argv[1]);
 	stringCount = atoi(argv[2]);
 	stringIndex = atoi(argv[3]);
+	k = atoi(argv[4]);
 	if(stringIndex == 0)
 		stringIndex = 5;
 
-	process(processIndex, stringIndex, stringCount);
+	process(processIndex, stringIndex, stringCount, k);
 	return 0;
 }
 
-void process(const int i, int stringIndex, int stringCount){
-	fprintf(stderr, "Process %d entering multiple process algorithm.\n\n", i);
+void process(const int i, int stringIndex, int stringCount, int c){
+	//fprintf(stderr, "Process %d entering multiple process algorithm.\n", i);
 	time_t currentTime;
 	char* currentTimeString;
 	key_t key2 = ftok("keygen2", 1);
@@ -58,6 +59,7 @@ void process(const int i, int stringIndex, int stringCount){
 					break;
 		} while ( ( j < n ) || ( *turn != i && flag[*turn] != 0) );
 		*turn = i;
+		printf("---------------------------------WE IN PROCESS-----------------------\n\n\n\n");
 		for(k = 0; k < stringIndex; k++){
 			srand(time(NULL));
 			float time1 = (float)rand()/(float)(RAND_MAX/2);
@@ -65,11 +67,11 @@ void process(const int i, int stringIndex, int stringCount){
 			sleep(time1);
 			currentTime = time(NULL);
 			currentTimeString = ctime(&currentTime);
-			fprintf(stderr, "Process %d entering critical section.  Time: %s\n", i, currentTimeString);
-			palin(stringCount, i, (i*5)+k);
+			//fprintf(stderr, "Process %d entering critical section.  Time: %s %d \n", i, currentTimeString, c);
+			palin(stringCount, c, (c*5)+k);
 			currentTime = time(NULL);
 			currentTimeString = ctime(&currentTime);
-			fprintf(stderr, "Process %d exiting critical section.  Time: %s\n", i, currentTimeString);
+			//fprintf(stderr, "Process %d exiting critical section.  Time: %s\n", i, currentTimeString);
 			sleep(time2);
 		}
 		exit = 1;
