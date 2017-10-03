@@ -1,7 +1,7 @@
 /**
  * Author: Taylor Freiner
- * Date: October 1, 2017
- * Log: Finished.
+ * Date: October 2, 2017
+ * Log: Cleaning up code.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,10 +36,10 @@ void clean(int sig){
 }
 
 int main(int argc, char* argv[]){
-	int option, size, i;
+	int option, i;
 	int max_time = 60;
 	char argval;
-	char filename[1][100];
+	char *filename = (char *)malloc(100);
 	int count = 0;
 	char line[256];
 	pid_t childpid = 0;
@@ -48,11 +48,11 @@ int main(int argc, char* argv[]){
 	signal(SIGINT, clean);
 	signal(SIGALRM, clean);
 
-	if (argc != 3){
+	if (argc != 5){
 		fprintf(stderr, "%s Error: Incorrect number of arguments\n", argv[0]);
 		return 1;
 	}
-	while ((option = getopt(argc, argv, "ht:")) != -1){
+	while ((option = getopt(argc, argv, "ht:f:")) != -1){
 		switch (option){
 			case 'h':
 				printf("Usage: %s <-t positive integer>\n", argv[0]);
@@ -69,6 +69,9 @@ int main(int argc, char* argv[]){
 					fprintf(stderr, "%s Error: Argument must be a positive integer\n", argv[0]);			
 				}
 				break;
+			case 'f':
+				filename = optarg;
+				break;
 			case '?':
 				fprintf(stderr, "%s Error: Usage: %s <-t positive integer>\n", argv[0], argv[0]);
 				return 1;
@@ -77,7 +80,7 @@ int main(int argc, char* argv[]){
 	}
 			
 	//FILE MANAGEMENT
-	FILE *file = fopen("strings.txt", "r");
+	FILE *file = fopen(filename, "r");
 	
 	if (file == NULL){
 		printf("%s: ", argv[0]);
@@ -85,8 +88,6 @@ int main(int argc, char* argv[]){
 		return 1;
 	}
 
-	size = sizeof(file);
-	
     	while (fgets(line, sizeof(line), file) != NULL)
     	{
             count++;
@@ -123,7 +124,7 @@ int main(int argc, char* argv[]){
 	char (*mempoint)[256] = shmat (memid, NULL, 0);
 	int *mempoint2 = (int *)shmat (memid2, NULL, 0);
 	int *mempoint3 = (int *)shmat (memid3, NULL, 0);
-	if(*mempoint == -1)
+	if(*mempoint == (char *) -1)
 		perror("Error\n");
 	if(*mempoint2 == -1)
 		perror("Error\n");
@@ -136,7 +137,7 @@ int main(int argc, char* argv[]){
 	for(i = 0; i < 19; i++)
 		memcpy(&mempoint3[i], &flag, 4);
 	int turnint = 0;
-	memcpy(mempoint2, &turnint, sizeof(int*));
+	memcpy(mempoint2, &turnint, sizeof(int));
 
 	//PROCESSES
 	int processcount = 0;
