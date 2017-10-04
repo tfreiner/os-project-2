@@ -1,7 +1,7 @@
 /**
  * Author: Taylor Freiner
- * Date: October 1, 2017
- * Log: Finished. 
+ * Date: October 3, 2017
+ * Log: Final touches.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,6 +27,7 @@ int main(int argc, char* argv[]){
 	return 0;
 }
 
+//MULTI PROCESS ALGORITHM
 void process(const int i, int stringIndex, int stringCount, int c){
 	fprintf(stderr, "Process %d entering multiple process algorithm.\n", i);
 	time_t currentTime;
@@ -82,6 +83,7 @@ void process(const int i, int stringIndex, int stringCount, int c){
 	} while (exit == 0);
 }
 
+//WRITES STRINGS TO FILES
 void palin(int stringCount, int processIndex, int stringIndex){
 	int i = 0;
 	int j = 0;

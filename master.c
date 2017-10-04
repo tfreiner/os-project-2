@@ -1,7 +1,7 @@
 /**
  * Author: Taylor Freiner
- * Date: October 2, 2017
- * Log: Cleaning up code.
+ * Date: October 3, 2017
+ * Log: Final touches.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,8 +30,9 @@ void clean(int sig){
 	for(i = 0; i < 3; i++){
 		shmctl(sharedmem[memcount], IPC_RMID, NULL);
 	}
-	for(i = -1; i < processcount; i++){
-		kill(processids[processcount], SIGKILL);		
+	for(i = 0; i < processcount; i++){
+		printf("Killing process %d", processids[i]);
+		kill(processids[i], SIGKILL);
 	}
 }
 
@@ -48,15 +49,16 @@ int main(int argc, char* argv[]){
 	signal(SIGINT, clean);
 	signal(SIGALRM, clean);
 
-	if (argc != 5){
+	if (argc != 5 && argc != 2){
 		fprintf(stderr, "%s Error: Incorrect number of arguments\n", argv[0]);
 		return 1;
 	}
 	while ((option = getopt(argc, argv, "ht:f:")) != -1){
 		switch (option){
 			case 'h':
-				printf("Usage: %s <-t positive integer>\n", argv[0]);
+				printf("Usage: %s <-t positive integer> <-f filename>\n", argv[0]);
 				printf("\t-t: max time to run program\n");
+				printf("\t-f: name of file containing strings\n");
 				printf("\t-h: help\n");
 				return 0;
 				break;
@@ -73,7 +75,7 @@ int main(int argc, char* argv[]){
 				filename = optarg;
 				break;
 			case '?':
-				fprintf(stderr, "%s Error: Usage: %s <-t positive integer>\n", argv[0], argv[0]);
+				fprintf(stderr, "%s Error: Usage: %s <-t positive integer> <-f filename>\n", argv[0], argv[0]);
 				return 1;
 				break;
 		}
