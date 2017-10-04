@@ -3,4 +3,4 @@ OS Project 2
 Repo. https://github.com/tfreiner/os-project-2
 
 To run this project, type make to create the executable 'master' and then type 'master' followed by the options and arguments.
-There are 3 options , -h(help), -t(time), and -f(filename).
+There are 3 options: -h(help), -t(time), and -f(filename).

@@ -30,8 +30,7 @@ void clean(int sig){
 	for(i = 0; i < 3; i++){
 		shmctl(sharedmem[memcount], IPC_RMID, NULL);
 	}
-	for(i = 0; i < processcount; i++){
-		printf("Killing process %d", processids[i]);
+	for(i = -1; i < processcount; i++){
 		kill(processids[i], SIGKILL);
 	}
 }
